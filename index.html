@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollination EduCard AI</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        primaryHover: '#4f46e5',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.3/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* Custom Styles & Scrollbars */
+        body { margin: 0; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #374151; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        .markdown-body h1 { font-family: 'Poppins', sans-serif; font-size: 2rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: #6366f1; }
+        .markdown-body h2 { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; }
+        .dark .markdown-body h2 { border-color: #374151; }
+        .markdown-body h3 { font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .markdown-body p { margin-bottom: 1rem; line-height: 1.6; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-body strong { font-weight: 600; color: #4f46e5; }
+        .dark .markdown-body strong { color: #818cf8; }
+        .markdown-body { 
+            word-wrap: break-word; 
+            overflow-wrap: break-word; 
+        }
+        .markdown-body pre, .markdown-body code {
+            white-space: pre-wrap; 
+            word-break: break-all;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        
+        .dynamic-image-container { margin: 1.5rem 0; text-align: center; border-radius: 0.75rem; overflow: hidden; background: #f3f4f6; padding: 1rem; border: 1px dashed #d1d5db; }
+        .dark .dynamic-image-container { background: #1f2937; border-color: #4b5563; }
+        .dynamic-image-container img { max-width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 0 auto; }
+        
+        /* Doodles Background */
+        #doodle-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; pointer-events: none; opacity: 0.05; }
+        .dark #doodle-bg { opacity: 0.03; }
+        .doodle-icon { position: absolute; color: currentColor; }
+
+        /* Glowing Hover Effects */
+        .glow-btn { transition: all 0.3s ease; }
+        .glow-btn:hover { box-shadow: 0 0 15px rgba(99, 102, 241, 0.5); transform: translateY(-1px); }
+
+        /* Loader */
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #6366f1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Toast */
+        #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { padding: 1rem 1.5rem; border-radius: 0.5rem; color: white; font-weight: 500; transform: translateX(120%); transition: transform 0.3s ease-out; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 flex h-screen font-sans">
+
+    <div id="doodle-bg" class="text-slate-900 dark:text-white"></div>
+
+    <div id="toast-container"></div>
+
+    <div id="landing-page" class="w-full h-full flex flex-col justify-center items-center z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm absolute inset-0 transition-opacity duration-500">
+        <div class="h-[60%] flex flex-col justify-end items-center pb-12">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-seedling text-3xl text-white"></i>
+                </div>
+                <h1 class="font-heading text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">
+                    Pollination EduCard AI
+                </h1>
+            </div>
+            <p class="text-lg text-slate-600 dark:text-slate-400 max-w-xl text-center">
+                Generate structured study notes, dynamic diagrams, and interactive quizzes instantly.
+            </p>
+        </div>
+        <div class="h-[40%] flex flex-col justify-start items-center pt-8 w-full">
+            <button id="login-start-btn" onclick="appAuth.login()" class="glow-btn bg-primary hover:bg-primaryHover text-white px-10 py-4 rounded-full font-heading font-semibold text-xl shadow-lg transition-all flex items-center gap-3">
+                <i class="fa-solid fa-rocket"></i> Start Learning (Login via Pollinations)
+            </button>
+            <p class="mt-4 text-sm text-slate-500 dark:text-slate-500"><i class="fa-solid fa-lock"></i> Secure BYOP Authentication</p>
+        </div>
+    </div>
+
+    <div id="app-interface" class="hidden w-full h-full flex overflow-hidden z-20 bg-transparent">
+        
+        <aside class="w-80 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-300">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h2 class="font-heading font-semibold text-lg"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Study History</h2>
+                <button onclick="appUI.toggleSidebar()" class="lg:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div id="history-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                </div>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700">
+                <button onclick="appData.clearHistory()" class="w-full py-2.5 px-4 bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i> Clear All History
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col relative min-w-0">
+            
+            <header class="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-10">
+                <div class="flex items-center gap-4">
+                    <button onclick="appUI.toggleSidebar()" class="lg:hidden text-slate-600 dark:text-slate-300">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <a href="https://pollinations.ai/" target="_blank" class="font-heading font-bold text-xl flex items-center gap-2 hover:opacity-80 transition-opacity">
+                        <i class="fa-solid fa-seedling text-primary"></i>
+                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">Pollination AI</span>
+                    </a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="appUI.toggleTheme()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Toggle Theme">
+                        <i id="theme-icon" class="fa-solid fa-moon text-slate-600 dark:text-slate-300"></i>
+                    </button>
+                    <button onclick="appUI.openSettings()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Settings">
+                        <i class="fa-solid fa-gear text-slate-600 dark:text-slate-300"></i>
+                    </button>
+                    <button onclick="appAuth.logout()" class="ml-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800">
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <div class="p-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 z-10">
+                <div class="max-w-4xl mx-auto flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="topic-input" placeholder="What do you want to learn today? (e.g., Quantum Physics, Cellular Respiration)" 
+                            class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary shadow-sm transition-shadow">
+                    </div>
+                    <select id="audience-select" class="md:w-48 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm appearance-none cursor-pointer">
+                        <option value="Middle School">Middle School</option>
+                        <option value="High School">High School</option>
+                        <option value="University">University</option>
+                        <option value="Explain Like I'm 5">Explain Like I'm 5</option>
+                    </select>
+                    <button id="generate-btn" onclick="appGenerate.startGeneration()" class="glow-btn bg-primary hover:bg-primaryHover text-white px-8 py-3 rounded-xl font-medium shadow-md flex items-center justify-center gap-2 min-w-[140px]">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Generate</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 relative" id="study-container-wrapper">
+                <div class="max-w-4xl mx-auto">
+                    
+                    <div id="empty-state" class="flex flex-col items-center justify-center h-full min-h-[400px] text-slate-400 dark:text-slate-500">
+                        <i class="fa-solid fa-book-open-reader text-6xl mb-4 opacity-50"></i>
+                        <h3 class="text-xl font-heading font-medium">Your study notes will appear here</h3>
+                        <p class="mt-2 text-sm">Enter a topic above and hit generate to begin.</p>
+                    </div>
+
+                    <div id="study-box" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 mb-8 relative">
+                        
+                        <div class="no-print absolute top-4 right-4 flex gap-2">
+                            <button onclick="appUI.copyNotes()" class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors tooltip" title="Copy Notes">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                            <button onclick="appGenerate.startGeneration(true)" class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors tooltip" title="Regenerate">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                            <button onclick="appExport.downloadNotesPDF()" class="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 transition-colors tooltip" title="Download PDF">
+                                <i class="fa-solid fa-file-pdf"></i>
+                            </button>
+                        </div>
+
+                        <div id="generated-content" class="markdown-body"></div>
+
+                    </div>
+
+                    <div id="interactive-tools" class="hidden no-print space-y-6 mb-12">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button onclick="appGenerate.generateMoreInfo()" id="btn-more" class="glow-btn bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
+                                <i class="fa-solid fa-layer-group text-2xl text-blue-500"></i>
+                                <span class="font-medium text-sm">Deep Dive & More Info</span>
+                            </button>
+                            <button onclick="appGenerate.generateTLDR()" id="btn-tldr" class="glow-btn bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
+                                <i class="fa-solid fa-list-ul text-2xl text-green-500"></i>
+                                <span class="font-medium text-sm">Quick Summary (TL;DR)</span>
+                            </button>
+                            <button onclick="appGenerate.generateQuiz()" id="btn-quiz" class="glow-btn bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
+                                <i class="fa-solid fa-clipboard-question text-2xl text-purple-500"></i>
+                                <span class="font-medium text-sm">Create Interactive Quiz</span>
+                            </button>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col sm:flex-row gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-clipboard-user text-orange-500"></i>
+                            </div>
+                            <input type="text" id="ask-input" placeholder="Ask a specific question about these notes..." class="flex-1 w-full bg-transparent border-none focus:ring-0 outline-none px-2 text-sm sm:text-base">
+                            <button onclick="appGenerate.askQuestion()" id="btn-ask" class="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto">
+                                Ask AI
+                            </button>
+                        </div>
+                        
+                        <div id="tool-response-container" class="hidden bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-6 markdown-body"></div>
+                    </div>
+
+                    <div id="quiz-container" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 mb-12 relative">
+                        <div class="no-print absolute top-4 right-4 flex gap-2">
+                            <button onclick="appExport.downloadQuizPDF()" class="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 transition-colors tooltip" title="Download Quiz PDF">
+                                <i class="fa-solid fa-file-pdf"></i>
+                            </button>
+                            <button onclick="appUI.closeQuiz()" class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <h2 class="font-heading font-bold text-2xl text-primary mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">Knowledge Check Quiz</h2>
+                        <div id="quiz-content" class="space-y-6"></div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300" id="settings-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-heading font-semibold text-xl">Model Settings</h2>
+                <button onclick="appUI.closeSettings()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Text Generation Model</label>
+                    <div class="relative">
+                        <select id="text-model-select" class="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="openai" disabled>Loading models...</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Image Generation Model</label>
+                    <div class="relative">
+                        <select id="image-model-select" class="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="zimage" disabled>Loading models...</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button onclick="appUI.saveSettings()" class="w-full bg-primary hover:bg-primaryHover text-white py-3 rounded-lg font-medium transition-colors">
+                        Save Preferences
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Global App Configuration & State
+         */
+        const APP_CONFIG = {
+            clientId: 'pk_K8AjMAFfLTEUzC1I',
+            textApiEndpoint: 'https://gen.pollinations.ai/v1/chat/completions',
+            imageApiEndpoint: 'https://gen.pollinations.ai/image/',
+            bannedWords: ['nsfw', 'porn', 'gore', 'sex', 'nude', 'violence', 'blood', 'kill'],
+            defaultTextModel: 'openai', /* Fixed from qwen-safety */
+            defaultImageModel: 'zimage'
+        };
+
+        const state = {
+            apiKey: null,
+            currentTopic: '',
+            currentNotes: '',
+            isGenerating: false,
+            textModel: localStorage.getItem('poll_textModel') || APP_CONFIG.defaultTextModel,
+            imageModel: localStorage.getItem('poll_imageModel') || APP_CONFIG.defaultImageModel,
+            history: JSON.parse(localStorage.getItem('poll_history')) || []
+        };
+
+        /**
+         * Model Fetching Logic
+         */
+        const appModels = {
+            fetchModelsQuietly: async () => {
+                try {
+                    const textRes = await fetch('https://gen.pollinations.ai/text/models');
+                    const textModels = await textRes.json();
+                    const textSelect = document.getElementById('text-model-select');
+                    
+                    textSelect.innerHTML = textModels.map(model => {
+                        const modelId = typeof model === 'string' ? model : (model.id || model.name);
+                        const modelType = typeof model === 'object' && model.type ? model.type : 'Text';
+                        return `<option value="${modelId}">${modelId} (${modelType})</option>`;
+                    }).join('');
+                    
+                    if (textSelect.querySelector(`option[value="${state.textModel}"]`)) {
+                        textSelect.value = state.textModel; 
+                    } else {
+                        textSelect.value = APP_CONFIG.defaultTextModel;
+                    }
+
+                    const imgRes = await fetch('https://gen.pollinations.ai/image/models');
+                    const imgModels = await imgRes.json();
+                    const imgSelect = document.getElementById('image-model-select');
+                    
+                    imgSelect.innerHTML = imgModels.map(model => {
+                        const modelId = typeof model === 'string' ? model : (model.id || model.name);
+                        return `<option value="${modelId}">${modelId} (Image)</option>`;
+                    }).join('');
+                    
+                    if (imgSelect.querySelector(`option[value="${state.imageModel}"]`)) {
+                        imgSelect.value = state.imageModel; 
+                    } else {
+                        imgSelect.value = APP_CONFIG.defaultImageModel;
+                    }
+
+                } catch (error) {
+                    console.error("Background model fetch failed:", error);
+                    document.getElementById('text-model-select').innerHTML = `<option value="${state.textModel || 'openai'}">${state.textModel || 'openai'}</option>`;
+                    document.getElementById('image-model-select').innerHTML = `<option value="${state.imageModel || 'zimage'}">${state.imageModel || 'zimage'}</option>`;
+                }
+            }
+        };
+
+        /**
+         * Core Authentication Logic (BYOP Flow)
+         */
+        const appAuth = {
+            init: () => {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                if (hashParams.has('api_key')) {
+                    const token = hashParams.get('api_key');
+                    localStorage.setItem('poll_apiKey', token);
+                    window.history.replaceState(null, null, window.location.pathname + window.location.search);
+                    appUI.showToast('Login Successful!', 'success');
+                }
+
+                state.apiKey = localStorage.getItem('poll_apiKey');
+                
+                if (state.apiKey) {
+                    appUI.showMainApp();
+                } else {
+                    appUI.showLanding();
+                }
+            },
+            
+            login: () => {
+                const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+                const authUrl = `https://enter.pollinations.ai/authorize?client_id=${APP_CONFIG.clientId}&redirect_uri=${redirectUri}`;
+                window.location.href = authUrl;
+            },
+
+            logout: () => {
+                localStorage.removeItem('poll_apiKey');
+                state.apiKey = null;
+                appUI.showLanding();
+                appUI.showToast('Logged out securely.', 'info');
+            }
+        };
+
+        /**
+         * UI & UX Management
+         */
+        const appUI = {
+            showLanding: () => {
+                document.getElementById('landing-page').classList.remove('hidden');
+                document.getElementById('app-interface').classList.add('hidden');
+            },
+            
+            showMainApp: () => {
+                document.getElementById('landing-page').classList.add('hidden');
+                document.getElementById('app-interface').classList.remove('hidden');
+                appData.renderHistory();
+                
+                // Fetch models automatically when main app loads
+                appModels.fetchModelsQuietly();
+            },
+
+            toggleTheme: () => {
+                const html = document.documentElement;
+                const icon = document.getElementById('theme-icon');
+                if (html.classList.contains('dark')) {
+                    html.classList.remove('dark');
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    html.classList.add('dark');
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                }
+            },
+
+            toggleSidebar: () => {
+                const sidebar = document.querySelector('aside');
+                if (sidebar.classList.contains('-translate-x-full') || sidebar.style.display === 'none' || window.getComputedStyle(sidebar).display === 'none') {
+                    sidebar.style.display = sidebar.style.display === 'none' || sidebar.style.display === '' ? 'flex' : 'none';
+                    if(window.innerWidth < 1024) {
+                        sidebar.classList.toggle('absolute');
+                        sidebar.classList.toggle('z-50');
+                        sidebar.classList.toggle('h-full');
+                    }
+                }
+            },
+
+            setLoading: (isLoading, btnId = 'generate-btn', defaultText = 'Generate') => {
+                state.isGenerating = isLoading;
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                
+                if (isLoading) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-70', 'cursor-not-allowed');
+                    btn.innerHTML = `<span class="loader border-white"></span> <span class="ml-2">Working...</span>`;
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    const icon = btnId === 'generate-btn' ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' : '';
+                    btn.innerHTML = `${icon} <span class="ml-2">${defaultText}</span>`;
+                }
+            },
+
+            showToast: (message, type = 'success') => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                let icon = 'fa-check-circle';
+                if(type==='error') icon = 'fa-circle-exclamation';
+                if(type==='info') icon = 'fa-circle-info';
+
+                toast.innerHTML = `<i class="fa-solid ${icon} mr-2"></i> ${message}`;
+                container.appendChild(toast);
+                
+                setTimeout(() => toast.classList.add('show'), 10);
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+
+            copyNotes: () => {
+                const text = document.getElementById('generated-content').innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    appUI.showToast('Notes copied to clipboard!', 'success');
+                }).catch(err => {
+                    appUI.showToast('Failed to copy', 'error');
+                });
+            },
+
+            openSettings: () => {
+                const modal = document.getElementById('settings-modal');
+                const content = document.getElementById('settings-content');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                }, 10);
+            },
+
+            closeSettings: () => {
+                const modal = document.getElementById('settings-modal');
+                const content = document.getElementById('settings-content');
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            },
+
+            saveSettings: () => {
+                state.textModel = document.getElementById('text-model-select').value;
+                state.imageModel = document.getElementById('image-model-select').value;
+                localStorage.setItem('poll_textModel', state.textModel);
+                localStorage.setItem('poll_imageModel', state.imageModel);
+                appUI.closeSettings();
+                appUI.showToast('Preferences saved successfully.');
+            },
+
+            closeQuiz: () => {
+                document.getElementById('quiz-container').classList.add('hidden');
+            }
+        };
+
+        /**
+         * Core Generation Logic
+         */
+        const appGenerate = {
+            checkNSFW: (text) => {
+                const lowerText = text.toLowerCase();
+                return APP_CONFIG.bannedWords.some(word => lowerText.includes(word));
+            },
+
+            startGeneration: async (isRegenerate = false) => {
+                if (state.isGenerating) return;
+                
+                let topic = isRegenerate ? state.currentTopic : document.getElementById('topic-input').value.trim();
+                const audience = document.getElementById('audience-select').value;
+
+                if (!topic) {
+                    appUI.showToast('Please enter a topic to learn about.', 'error');
+                    return;
+                }
+
+                if (appGenerate.checkNSFW(topic)) {
+                    appUI.showToast('Inappropriate content detected. Request blocked.', 'error');
+                    return;
+                }
+
+                state.currentTopic = topic;
+                appUI.setLoading(true);
+                
+                document.getElementById('empty-state').classList.add('hidden');
+                document.getElementById('study-box').classList.remove('hidden');
+                document.getElementById('interactive-tools').classList.add('hidden');
+                document.getElementById('tool-response-container').classList.add('hidden');
+                document.getElementById('quiz-container').classList.add('hidden');
+                
+                document.getElementById('generated-content').innerHTML = `
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                        <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                        <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
+                        <div class="h-40 bg-slate-200 dark:bg-slate-700 rounded w-full my-6"></div>
+                        <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                    </div>
+                `;
+
+                const systemPrompt = `You are an expert educator. Your goal is to thoroughly explain the topic for the audience level: ${audience}.
+                Output STRICTLY in pure Markdown format. Do NOT include raw JSON, API metadata, or introductory conversational filler.
+                Structure your response with:
+                # Introduction
+                # Key Points
+                # Conclusion
+                
+                CRITICAL INSTRUCTION FOR IMAGES: Whenever a visual diagram, illustration, or example would aid learning, you MUST insert EXACTLY this string format on a new line:
+                [IMAGE: a descriptive prompt for a textless, clean educational vector diagram about <specific concept>]
+                Do not use standard markdown image tags like ![](). Only use the [IMAGE: description] format.`;
+
+                try {
+                    const response = await fetch(APP_CONFIG.textApiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${state.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: state.textModel || 'openai',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: `Topic: ${topic}` }
+                            ],
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    
+                    const data = await response.json();
+                    let markdownText = data.choices[0].message.content;
+                    
+                    state.currentNotes = markdownText;
+                    
+                    await appGenerate.renderContentWithImages(markdownText);
+                    
+                    document.getElementById('interactive-tools').classList.remove('hidden');
+                    if (!isRegenerate) appData.addToHistory(topic, audience);
+                    appUI.showToast('Notes generated successfully!');
+
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('generated-content').innerHTML = `<p class="text-red-500 font-medium">Error generating content: ${error.message}</p>`;
+                    appUI.showToast('Failed to fetch content.', 'error');
+                } finally {
+                    appUI.setLoading(false);
+                }
+            },
+
+            renderContentWithImages: async (markdownText) => {
+                const container = document.getElementById('generated-content');
+                
+                const imageRegex = /\[IMAGE:\s*(.*?)\]/g;
+                let processedText = markdownText;
+                let imagesToFetch = [];
+                let matchCounter = 0;
+
+                processedText = processedText.replace(imageRegex, (match, prompt) => {
+                    const id = `img-dyn-${matchCounter++}`;
+                    imagesToFetch.push({ id, prompt });
+                    return `<div id="${id}" class="dynamic-image-container"><span class="loader border-primary mr-2"></span> <span class="text-sm text-slate-500 font-medium">Generating diagram: ${prompt.substring(0,30)}...</span></div>`;
+                });
+
+                const rawHtml = marked.parse(processedText);
+                const safeHtml = DOMPurify.sanitize(rawHtml);
+                container.innerHTML = safeHtml;
+
+                for (const imgData of imagesToFetch) {
+                    try {
+                        const url = `${APP_CONFIG.imageApiEndpoint}${encodeURIComponent(imgData.prompt)}?model=${state.imageModel}&nologo=true&private=true`;
+                        
+                        const imgRes = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${state.apiKey}`
+                            }
+                        });
+                        
+                        if (!imgRes.ok) throw new Error('Image load failed');
+                        
+                        const blob = await imgRes.blob();
+                        const objectUrl = URL.createObjectURL(blob);
+                        
+                        const wrapper = document.getElementById(imgData.id);
+                        if (wrapper) {
+                            wrapper.innerHTML = `<img src="${objectUrl}" alt="Educational Diagram: ${imgData.prompt}" onload="this.style.opacity=1" style="opacity:0; transition: opacity 0.5s ease-in;" />`;
+                        }
+                    } catch (e) {
+                        console.error('Image Error:', e);
+                        const wrapper = document.getElementById(imgData.id);
+                        if (wrapper) wrapper.innerHTML = `<p class="text-red-400 text-xs"><i class="fa-solid fa-triangle-exclamation"></i> Diagram generation failed.</p>`;
+                    }
+                }
+            },
+
+            generateSubFeature: async (promptAddition, btnId, btnDefaultText) => {
+                if (!state.currentTopic || state.isGenerating) return;
+                
+                appUI.setLoading(true, btnId, btnDefaultText);
+                const container = document.getElementById('tool-response-container');
+                container.innerHTML = `<div class="flex items-center text-indigo-600"><span class="loader border-indigo-600 mr-2"></span> Generating response...</div>`;
+                container.classList.remove('hidden');
+
+                try {
+                    const response = await fetch(APP_CONFIG.textApiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${state.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: state.textModel || 'openai',
+                            messages: [
+                                { role: 'system', content: 'You are an expert educational tutor. Output strictly in clean Markdown format. Do not use introductory filler text.' },
+                                { role: 'user', content: `Based on the topic: "${state.currentTopic}". ${promptAddition}` }
+                            ],
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+                    const data = await response.json();
+                    
+                    let rawContent = data.choices[0].message.content.trim();
+                    const lowerContent = rawContent.toLowerCase();
+                    
+                    if (lowerContent.startsWith('```markdown')) {
+                        rawContent = rawContent.substring(11);
+                    } else if (lowerContent.startsWith('```md')) {
+                        rawContent = rawContent.substring(5);
+                    } else if (lowerContent.startsWith('```')) {
+                        rawContent = rawContent.substring(3);
+                    }
+                    if (rawContent.endsWith('```')) {
+                        rawContent = rawContent.substring(0, rawContent.length - 3);
+                    }
+                    
+                    container.innerHTML = DOMPurify.sanitize(marked.parse(rawContent.trim()));
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                } catch (error) {
+                    container.innerHTML = `<p class="text-red-500">Failed to generate response.</p>`;
+                    appUI.showToast('Generation failed', 'error');
+                } finally {
+                    appUI.setLoading(false, btnId, btnDefaultText);
+                }
+            },
+
+            generateMoreInfo: () => appGenerate.generateSubFeature('Provide deep insights, advanced concepts, and real-world practical applications for this topic.', 'btn-more', 'Deep Dive & More Info'),
+            
+            generateTLDR: () => appGenerate.generateSubFeature('Compress the core knowledge into exactly 4 highly digestible, punchy bullet points.', 'btn-tldr', 'Quick Summary (TL;DR)'),
+            
+            askQuestion: () => {
+                const q = document.getElementById('ask-input').value.trim();
+                if (!q) { appUI.showToast('Please type a question', 'error'); return; }
+                appGenerate.generateSubFeature(`The user asks: "${q}". Provide a direct, contextual, and highly accurate answer based on the topic.`, 'btn-ask', 'Ask AI');
+                document.getElementById('ask-input').value = '';
+            },
+
+            generateQuiz: async () => {
+                if (!state.currentTopic || state.isGenerating) return;
+                
+                appUI.setLoading(true, 'btn-quiz', 'Create Interactive Quiz');
+                const qContainer = document.getElementById('quiz-container');
+                const qContent = document.getElementById('quiz-content');
+                qContainer.classList.remove('hidden');
+                qContent.innerHTML = `<div class="flex justify-center items-center py-10 text-primary"><span class="loader border-primary mr-3"></span> Building Quiz...</div>`;
+                qContainer.scrollIntoView({ behavior: 'smooth' });
+
+                const prompt = `Generate a 10-question multiple-choice quiz about: ${state.currentTopic}.
+                Return ONLY a valid JSON array of objects. No markdown formatting, no code blocks, JUST the raw JSON structure.
+                Format exactly like this:
+                [
+                  {
+                    "q": "Question text here?",
+                    "options": ["Option A", "Option B", "Option C", "Option D"],
+                    "a": "Exact string of the correct option"
+                  }
+                ]`;
+
+                try {
+                    const response = await fetch(APP_CONFIG.textApiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${state.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: state.textModel || 'openai',
+                            messages: [
+                                { role: 'system', content: 'You are an expert tutor creating assessments. Output ONLY a valid JSON array.' },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.3
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+                    const data = await response.json();
+                    let rawStr = data.choices[0].message.content.trim();
+                    const lowerStr = rawStr.toLowerCase();
+                    
+                    if (lowerStr.startsWith('```json')) {
+                        rawStr = rawStr.substring(7);
+                    } else if (lowerStr.startsWith('```')) {
+                        rawStr = rawStr.substring(3);
+                    }
+                    if (rawStr.endsWith('```')) {
+                        rawStr = rawStr.substring(0, rawStr.length - 3);
+                    }
+                    
+                    const quizData = JSON.parse(rawStr.trim());
+                    appGenerate.renderQuizUI(quizData);
+                    appUI.showToast('Quiz generated!', 'success');
+
+                } catch (error) {
+                    console.error("Quiz parsing error:", error);
+                    qContent.innerHTML = `<p class="text-red-500">Failed to parse quiz data. The AI returned invalid formatting. Please try again.</p>`;
+                    appUI.showToast('Quiz Generation failed', 'error');
+                } finally {
+                    appUI.setLoading(false, 'btn-quiz', 'Create Interactive Quiz');
+                }
+            },
+
+            renderQuizUI: (quizArray) => {
+                const qContent = document.getElementById('quiz-content');
+                qContent.innerHTML = '';
+                
+                quizArray.forEach((item, index) => {
+                    const qDiv = document.createElement('div');
+                    qDiv.className = 'bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700';
+                    
+                    let optionsHtml = item.options.map((opt, oIdx) => `
+                        <label class="flex items-center p-3 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors mb-2">
+                            <input type="radio" name="q${index}" value="${opt.replace(/"/g, '&quot;')}" class="w-4 h-4 text-primary focus:ring-primary border-slate-300">
+                            <span class="ml-3 text-sm">${DOMPurify.sanitize(opt)}</span>
+                        </label>
+                    `).join('');
+
+                    qDiv.innerHTML = `
+                        <p class="font-medium text-lg mb-4"><span class="text-primary mr-2">${index + 1}.</span> ${DOMPurify.sanitize(item.q)}</p>
+                        <div class="options-container" data-answer="${item.a.replace(/"/g, '&quot;')}">
+                            ${optionsHtml}
+                        </div>
+                        <div class="result-msg hidden mt-3 text-sm font-medium"></div>
+                    `;
+                    qContent.appendChild(qDiv);
+                });
+
+                const submitBtn = document.createElement('button');
+                submitBtn.className = 'w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-medium py-3 rounded-xl shadow-md transition-colors no-print';
+                submitBtn.innerHTML = '<i class="fa-solid fa-check-double mr-2"></i> Submit Answers';
+                submitBtn.onclick = () => appGenerate.evaluateQuiz(quizArray);
+                qContent.appendChild(submitBtn);
+            },
+
+            evaluateQuiz: (quizArray) => {
+                let score = 0;
+                const containers = document.querySelectorAll('.options-container');
+                
+                containers.forEach((container, index) => {
+                    const correctAnswer = container.getAttribute('data-answer');
+                    const selected = container.querySelector(`input[name="q${index}"]:checked`);
+                    const resultMsg = container.nextElementSibling;
+                    resultMsg.classList.remove('hidden');
+
+                    if (!selected) {
+                        resultMsg.innerHTML = `<span class="text-orange-500"><i class="fa-solid fa-circle-exclamation"></i> Unanswered. Correct: ${correctAnswer}</span>`;
+                        return;
+                    }
+
+                    if (selected.value === correctAnswer) {
+                        score++;
+                        resultMsg.innerHTML = `<span class="text-green-500"><i class="fa-solid fa-circle-check"></i> Correct!</span>`;
+                        selected.parentElement.classList.add('bg-green-50', 'dark:bg-green-900/20', 'border-green-500');
+                    } else {
+                        resultMsg.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-circle-xmark"></i> Incorrect. Correct: ${correctAnswer}</span>`;
+                        selected.parentElement.classList.add('bg-red-50', 'dark:bg-red-900/20', 'border-red-500');
+                    }
+                    
+                    container.querySelectorAll('input').forEach(inp => inp.disabled = true);
+                });
+
+                appUI.showToast(`Quiz completed! Score: ${score}/${quizArray.length}`, 'info');
+            }
+        };
+
+        /**
+         * Data Management & LocalStorage
+         */
+        const appData = {
+            addToHistory: (topic, audience) => {
+                if (!state.history.some(h => h.topic.toLowerCase() === topic.toLowerCase())) {
+                    state.history.unshift({ id: Date.now(), topic, audience, date: new Date().toLocaleDateString() });
+                    if (state.history.length > 20) state.history.pop(); 
+                    localStorage.setItem('poll_history', JSON.stringify(state.history));
+                    appData.renderHistory();
+                }
+            },
+
+            renderHistory: () => {
+                const list = document.getElementById('history-list');
+                list.innerHTML = '';
+                
+                if(state.history.length === 0) {
+                    list.innerHTML = `<p class="text-slate-400 text-sm text-center mt-4">No recent study history.</p>`;
+                    return;
+                }
+
+                state.history.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'group p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:border-primary/50 cursor-pointer transition-all flex justify-between items-center';
+                    el.innerHTML = `
+                        <div class="flex-1 min-w-0" onclick="document.getElementById('topic-input').value='${item.topic.replace(/'/g, "\\'")}'; document.getElementById('audience-select').value='${item.audience}'; appGenerate.startGeneration()">
+                            <h4 class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">${item.topic}</h4>
+                            <p class="text-xs text-slate-500">${item.audience} • ${item.date}</p>
+                        </div>
+                        <button onclick="appData.deleteHistoryItem(${item.id})" class="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-opacity ml-2" title="Delete Chat">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    list.appendChild(el);
+                });
+            },
+
+            deleteHistoryItem: (id) => {
+                state.history = state.history.filter(h => h.id !== id);
+                localStorage.setItem('poll_history', JSON.stringify(state.history));
+                appData.renderHistory();
+            },
+
+            clearHistory: () => {
+                if(confirm('Are you sure you want to clear all history?')) {
+                    state.history = [];
+                    localStorage.setItem('poll_history', JSON.stringify(state.history));
+                    appData.renderHistory();
+                    appUI.showToast('History cleared', 'info');
+                }
+            }
+        };
+
+        /**
+         * PDF Export Logic
+         */
+        const appExport = {
+            processExport: async (elementId, filename) => {
+                const element = document.getElementById(elementId);
+                
+                const noPrintElements = element.querySelectorAll('.no-print');
+                noPrintElements.forEach(el => el.style.display = 'none');
+                
+                appUI.showToast('Preparing PDF... Please wait', 'info');
+
+                const opt = {
+                    margin:       0.5,
+                    filename:     filename,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+
+                try {
+                    await html2pdf().set(opt).from(element).save();
+                    appUI.showToast('PDF Downloaded successfully!', 'success');
+                } catch(e) {
+                    console.error(e);
+                    appUI.showToast('Failed to generate PDF', 'error');
+                } finally {
+                    noPrintElements.forEach(el => el.style.display = '');
+                }
+            },
+
+            downloadNotesPDF: () => {
+                const filename = `${state.currentTopic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_notes.pdf`;
+                appExport.processExport('study-box', filename);
+            },
+            
+            downloadQuizPDF: () => {
+                const filename = `${state.currentTopic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quiz.pdf`;
+                appExport.processExport('quiz-container', filename);
+            }
+        };
+
+        /**
+         * Background Doodles Generation
+         */
+        function generateDoodles() {
+            const container = document.getElementById('doodle-bg');
+            const icons = [
+                '<i class="fa-solid fa-microscope"></i>', '<i class="fa-solid fa-atom"></i>', 
+                '<i class="fa-solid fa-book"></i>', '<i class="fa-solid fa-square-root-variable"></i>',
+                '<i class="fa-solid fa-earth-americas"></i>', '<i class="fa-solid fa-flask"></i>',
+                '<i class="fa-solid fa-calculator"></i>', '<i class="fa-solid fa-dna"></i>',
+                '<i class="fa-solid fa-language"></i>', '<i class="fa-solid fa-chart-pie"></i>'
+            ];
+
+            const numDoodles = 35; 
+
+            for (let i = 0; i < numDoodles; i++) {
+                const el = document.createElement('div');
+                el.className = 'doodle-icon';
+                el.innerHTML = icons[Math.floor(Math.random() * icons.length)];
+                
+                const size = Math.random() * 2 + 1; 
+                const left = Math.random() * 100; 
+                const top = Math.random() * 100; 
+                const rotation = Math.floor(Math.random() * 360); 
+                
+                el.style.fontSize = `${size}rem`;
+                el.style.left = `${left}vw`;
+                el.style.top = `${top}vh`;
+                el.style.transform = `rotate(${rotation}deg)`;
+                
+                container.appendChild(el);
+            }
+        }
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            generateDoodles();
+            appAuth.init();
+            
+            document.getElementById('topic-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') appGenerate.startGeneration();
+            });
+            document.getElementById('ask-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') appGenerate.askQuestion();
+            });
+        });
+
+    </script>
+</body>
+</html>
