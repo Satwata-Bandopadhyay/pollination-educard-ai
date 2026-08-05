@@ -380,7 +380,7 @@
             
             login: () => {
                 const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-                const authUrl = `https://enter.pollinations.ai/authorize?client_id=${APP_CONFIG.clientId}&redirect_uri=${redirectUri}`;
+                const authUrl = `https://enter.pollinations.ai/authorize?client_id=${APP_CONFIG.clientId}&redirect_uri=${redirectUri}&scope=usage`;
                 window.location.href = authUrl;
             },
 
